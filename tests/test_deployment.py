@@ -150,6 +150,27 @@ def test_api_exposes_no_interactive_docs(make_agent):
     assert client.get("/docs").status_code == 404 and client.get("/openapi.json").status_code == 404
 
 
+def test_missing_key_is_reported_instead_of_crashing_at_import(clean_env):
+    client = TestClient(create_app())
+    for path in ("/", "/api/v1/health"):
+        response = client.get(path)
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "NOT_CONFIGURED"
+        assert "LLM_API_KEY" in response.json()["error"]["message"]
+    assert client.post("/api/v1/chat", json={"message": "Oi"}).status_code == 503
+
+
+def test_missing_bundled_file_is_reported_instead_of_crashing_at_import(clean_env, tmp_path):
+    clean_env.setenv("LLM_API_KEY", "k")
+    clean_env.setenv("DATA_DIR", str(tmp_path))
+    clean_env.setenv("DB_PATH", str(tmp_path / "x.db"))
+    response = TestClient(create_app()).get("/api/v1/health")
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "STARTUP_FAILED"
+    assert "categories.csv" in response.json()["error"]["message"]
+    assert str(tmp_path) not in response.text
+
+
 def test_vercel_bundle_keeps_runtime_files():
     root = Path(__file__).resolve().parents[1]
     ignored = (root / ".vercelignore").read_text(encoding="utf-8").split()

@@ -1,6 +1,7 @@
 """Thin HTTP interface over the agent. All responses use the { data, meta, error } envelope."""
 from __future__ import annotations
 
+import logging
 import threading
 import time
 import uuid
@@ -13,7 +14,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .agent import MAX_MESSAGE_CHARS, ServiceAgent
-from .config import load_settings
+from .config import ConfigError, load_settings
+
+logger = logging.getLogger(__name__)
 
 CHAT_PAGE = Path(__file__).parent / "static" / "index.html"
 MINUTE_SECONDS = 60
@@ -67,14 +70,37 @@ def _envelope(data=None, meta: dict | None = None, error: dict | None = None, st
     return JSONResponse(status_code=status, content={"data": data, "meta": meta, "error": error})
 
 
+def _new_app() -> FastAPI:
+    return FastAPI(title="Empório da Música service agent", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+def _unavailable_app(code: str, message: str) -> FastAPI:
+    """Answers every request with the reason, since a crash at import shows only an opaque platform error."""
+    app = _new_app()
+
+    @app.api_route("/{path:path}", methods=["GET", "POST"], include_in_schema=False)
+    def unavailable(path: str) -> JSONResponse:
+        return _envelope(error={"code": code, "message": message}, status=503)
+
+    return app
+
+
 def create_app(agent: ServiceAgent | None = None, limiter: RateLimiter | None = None) -> FastAPI:
     if agent is None:
-        settings = load_settings()
-        agent = ServiceAgent.from_settings(settings)
+        try:
+            settings = load_settings()
+            agent = ServiceAgent.from_settings(settings)
+        except ConfigError as error:
+            logger.error("Agent not configured: %s", error)
+            return _unavailable_app("NOT_CONFIGURED", str(error))
+        except OSError as error:
+            logger.exception("Agent failed to start")
+            missing = Path(error.filename).name if error.filename else "unknown"
+            return _unavailable_app("STARTUP_FAILED", f"{type(error).__name__}: {missing}")
         limiter = limiter or RateLimiter(settings.rate_limit_per_minute, settings.rate_limit_per_day)
     limiter = limiter or RateLimiter()
 
-    app = FastAPI(title="Empório da Música service agent", docs_url=None, redoc_url=None, openapi_url=None)
+    app = _new_app()
     # One turn at a time per conversation, since a turn rewrites that conversation's history.
     session_locks: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)
 
