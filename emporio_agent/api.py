@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .agent import MAX_MESSAGE_CHARS, ServiceAgent
 from .config import ConfigError, load_settings
@@ -108,6 +109,10 @@ def create_app(agent: ServiceAgent | None = None, limiter: RateLimiter | None = 
     def invalid_request(_: Request, error: RequestValidationError) -> JSONResponse:
         detail = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in error.errors())
         return _envelope(error={"code": "INVALID_REQUEST", "message": detail}, status=422)
+
+    @app.exception_handler(StarletteHTTPException)
+    def http_error(_: Request, error: StarletteHTTPException) -> JSONResponse:
+        return _envelope(error={"code": "HTTP_ERROR", "message": str(error.detail)}, status=error.status_code)
 
     @app.get("/", include_in_schema=False)
     def chat_page() -> FileResponse:

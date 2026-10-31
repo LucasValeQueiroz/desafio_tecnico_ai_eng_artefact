@@ -150,6 +150,21 @@ def test_api_exposes_no_interactive_docs(make_agent):
     assert client.get("/docs").status_code == 404 and client.get("/openapi.json").status_code == 404
 
 
+def test_every_error_uses_the_envelope(make_agent):
+    agent, llm = make_agent([])
+    client = TestClient(create_app(agent), raise_server_exceptions=False)
+    not_utf8 = client.post(
+        "/api/v1/chat", content='{"message": "endereço"}'.encode("latin-1"), headers={"Content-Type": "application/json"}
+    )
+    not_found = client.get("/nothing-here")
+    wrong_method = client.get("/api/v1/chat")
+    for response, status in ((not_utf8, 400), (not_found, 404), (wrong_method, 405)):
+        body = response.json()
+        assert response.status_code == status
+        assert body["data"] is None and body["meta"]["request_id"] and body["error"]["code"] == "HTTP_ERROR"
+    assert llm.requests == []
+
+
 def test_missing_key_is_reported_instead_of_crashing_at_import(clean_env):
     client = TestClient(create_app())
     for path in ("/", "/api/v1/health"):
