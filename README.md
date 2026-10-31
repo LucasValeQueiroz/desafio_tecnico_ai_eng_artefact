@@ -146,7 +146,7 @@ The challenge's focus is the agent, so the CLI comes first. A small FastAPI laye
 The same app can run on Vercel, so that someone can try it without installing anything. ([ADR-006](specs/adr/ADR-006-public-demo-on-vercel.md)) To deploy your own, import the repository as a Vercel project and set `LLM_API_KEY` in its environment variables. Two trade-offs come with it:
 
 - **State is temporary.** Functions can only write to a temporary directory, so conversations, tickets and the verification lockout can reset when an instance changes. A managed database would be the first change for real traffic. The local version doesn't have this limitation.
-- **A public URL can spend the key.** The API limits messages per client and per day before calling the model, and interactive API docs are off. These counters are per instance, so the provider's spending cap is the real ceiling.
+- **A public URL can spend the key.** The API limits messages per client and per day before calling the model, and interactive API docs are off. I measured this on the deployed demo: one client sending messages in sequence was refused from the 11th message in a minute, but 14 simultaneous requests all passed, because each can reach its own instance with its own counter. Real protection needs a limit outside the application, such as a platform firewall rule and a quota at the provider.
 
 ### Conversation persistence: yes, in SQLite
 
@@ -173,7 +173,7 @@ The brief asks for documented assumptions when information is missing. Each one 
 
 ## Evaluation
 
-**Offline:** 157 tests cover pricing boundaries, identity rules, return windows, the safety net, the agent loop, API and adapters. They need no key or network.
+**Offline:** 160 tests cover pricing boundaries, identity rules, return windows, the safety net, the agent loop, API and adapters. They need no key or network.
 
 **Live:** [`evals/cases.py`](evals/cases.py) has 47 scenarios with deterministic assertions on tools used and reply content. Data leakage and manipulation have zero tolerance.
 

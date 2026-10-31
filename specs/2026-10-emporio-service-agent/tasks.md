@@ -139,9 +139,9 @@
   - covers: RNF-08
   - done when: tests assert a 429 envelope without a model call, and recovery after the window
 
-- [!] **T-26** Smoke test of the public URL
+- [x] **T-26** Smoke test of the public URL
   - covers: AC-04, AC-14, RNF-08
-  - DEP: H-07; blocked on the project existing on Vercel
+  - DEP: H-07
   - done when: the URL's chat page answers a catalog and a policy question
 
 ---
@@ -175,9 +175,9 @@
 - [ ] **H-06** Freeze the repository
   - done when: no commit exists after the delivery date and time; spec marked `Implemented`
 
-- [ ] **H-07** Create the Vercel project and set a spending cap
+- [ ] **H-07** Create the Vercel project and set limits outside the application
   - covers: RNF-08
-  - done when: the repository is imported, `LLM_API_KEY` is set in the project, and the provider has a budget limit
+  - done when: the repository is imported, `LLM_API_KEY` is set in the project, a firewall rate limit covers the chat route, and the provider has a budget alert and a quota
 
 - [ ] **H-08** Take the demo down after the selection process
   - covers: RNF-08
@@ -230,5 +230,6 @@
 
 ## Notes / Decisions during execution
 
+- 2026-10-31 — Checks on the deployed URL found three things tests had missed: the app crashed opaquely without a key, framework errors escaped the response envelope, and simultaneous requests bypass the per-instance rate limit. The first two were fixed; the third needs a limit outside the application (H-07).
 - 2026-10-31 — The first live run scored 43/44, and the stricter suite 44/44, yet reading the replies showed invented product details that no assertion caught. Tools now return description and specs in every result, the prompt forbids embellishment, and new scenarios cover it. Lesson: read the transcripts, not only the score.
 - 2026-10-31 — The recruiter's email says responses must be in English and submitted as a PDF through a form; the challenge PDF says to reply to the email with the repository link. Both are in the Delivery section so neither is missed.

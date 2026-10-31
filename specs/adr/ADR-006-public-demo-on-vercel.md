@@ -11,7 +11,7 @@ The candidate wants a public demo, with the API key held in the platform's envir
 
 ## Decision
 
-We will deploy the existing FastAPI app on Vercel through a root `app.py`. On that platform SQLite lives in the temporary directory, and we accept that history, tickets and the verification lockout can reset when an instance changes. We will limit messages per client and per day in the application, and rely on a spending cap at the LLM provider as the hard ceiling.
+We will deploy the existing FastAPI app on Vercel through a root `app.py`. On that platform SQLite lives in the temporary directory, and we accept that history, tickets and the verification lockout can reset when an instance changes. We will limit messages per client and per day in the application, and rely on limits outside the application, a platform firewall rule and a provider quota, as the real ceiling.
 
 ## Alternatives Considered
 
@@ -28,7 +28,7 @@ We will deploy the existing FastAPI app on Vercel through a root `app.py`. On th
 ### Access code on the demo
 - **Pros:** the strongest protection against abuse without a database.
 - **Cons:** friction for evaluators, and one more thing to send.
-- **Why rejected:** a link shared only by email or PDF plus the spending cap is enough for a few days. Easy to add if abuse appears.
+- **Why rejected:** a link shared only by email or PDF, plus limits outside the application, is enough for a few days. Easy to add if abuse appears.
 
 ### No public demo
 - **Pros:** no cost exposure and nothing new to explain.
@@ -43,7 +43,7 @@ We will deploy the existing FastAPI app on Vercel through a root `app.py`. On th
 
 ### Negative
 - A conversation can lose its memory on an instance change, and promised protocols may not persist on the demo.
-- The lockout and rate limits apply per instance, which is weaker than on the CLI or a real deployment.
+- The lockout and rate limits apply per instance, which is weaker than on the CLI or a real deployment. Measured on the deployment: sequential traffic was refused from the 11th message in a minute, while 14 simultaneous requests all passed.
 
 ### Neutral / follow-ups
 - Example conversations and evaluation run locally, since they need a fixed clock that a public endpoint must not expose.

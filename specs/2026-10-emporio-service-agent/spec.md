@@ -114,7 +114,7 @@ Doing nothing keeps the team overloaded. Doing this carelessly would put a confi
 - **RNF-05 (Reliability)** — A failed consultation or service call never crashes the conversation and never loses earlier history.
 - **RNF-06 (Testability)** — All business rules can be tested without credentials or network. The current date and time can be fixed so results are reproducible.
 - **RNF-07 (Simplicity)** — An evaluator can go from a fresh clone to a running conversation in under five minutes. Components are added only when they earn their place.
-- **RNF-08 (Cost protection)** — When the system is publicly reachable, excess messages are refused before they consume the language service, and the provider's spending is capped outside the application.
+- **RNF-08 (Cost protection)** — When the system is publicly reachable, excess messages are refused before they consume the language service, with limits both in the application and outside it.
 
 ---
 

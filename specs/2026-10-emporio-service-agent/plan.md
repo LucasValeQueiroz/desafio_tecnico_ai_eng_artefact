@@ -23,7 +23,7 @@ A small Python package with a hand-written tool-calling loop. The LLM decides *w
 - **AD-05** — Typed tools, no text-to-SQL. Rationale: a 6-table dataset and a closed list of questions don't justify it, and generated SQL over a customer table is a data-leak surface that AD-04 exists to remove.
 - **AD-06** — SQLite (standard library) for conversations and tickets. Rationale: conversations must survive restarts (RF-02), no server needed.
 - **AD-07** — Clock context travels in each user turn rather than in the system prompt. Rationale: the system prompt stays byte-identical, so the prompt cache keeps hitting, and history stays append-only, which models that replay thinking blocks require.
-- **AD-08** — Public demo on Vercel, with temporary SQLite, application rate limits and a provider spending cap. See ADR-006.
+- **AD-08** — Public demo on Vercel, with temporary SQLite, application rate limits, and limits outside the application. See ADR-006.
 - **New ADR required:** yes, ADR-001 to ADR-006 in `specs/adr/`.
 
 ---

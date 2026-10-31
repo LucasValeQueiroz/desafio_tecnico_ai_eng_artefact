@@ -34,7 +34,7 @@ class RateLimiter:
     """Limits messages per client and overall, protecting the paid key behind a public URL.
 
     The counters live in the process, so on serverless they apply per instance. This slows down
-    casual abuse. The hard ceiling is the spending cap set at the LLM provider (ADR-006).
+    casual abuse. Simultaneous requests can reach separate instances, so the real ceiling lives outside the application (ADR-006).
     """
 
     def __init__(self, per_minute: int = 10, per_day: int = 300, clock=time.monotonic) -> None:
