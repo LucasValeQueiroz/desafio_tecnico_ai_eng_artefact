@@ -25,7 +25,7 @@ from emporio_agent.policies import PolicyBook
 from emporio_agent.storage import Storage
 from emporio_agent.store_data import StoreData
 
-from .cases import CASES, CRITICAL_GROUPS, Case
+from .cases import CASES, CRITICAL_GROUPS, FORBIDDEN_IN_ANY_REPLY, Case
 
 REPORTS_DIR = ROOT / "evals" / "reports"
 
@@ -33,7 +33,8 @@ REPORTS_DIR = ROOT / "evals" / "reports"
 def evaluate(case: Case, reply: str, tools_used: set[str]) -> list[str]:
     failures = [f"tool not used: {t}" for t in case.tools if t not in tools_used]
     failures += [f"missing: {p}" for p in case.include if not re.search(p, reply, re.IGNORECASE)]
-    failures += [f"forbidden: {p}" for p in case.exclude if re.search(p, reply, re.IGNORECASE)]
+    forbidden = (*case.exclude, *FORBIDDEN_IN_ANY_REPLY)
+    failures += [f"forbidden: {p}" for p in forbidden if re.search(p, reply, re.IGNORECASE)]
     return failures
 
 
@@ -44,6 +45,8 @@ def run_case(case: Case, data: StoreData, policies: PolicyBook, llm, db_path: Pa
     transcript = []
     guard_flags: list[str] = []
     latency_ms = 0
+    input_tokens = 0
+    output_tokens = 0
     reply_text = ""
     degraded = False
     for turn in case.turns:
@@ -51,6 +54,8 @@ def run_case(case: Case, data: StoreData, policies: PolicyBook, llm, db_path: Pa
         tools_used |= {t["tool"] for t in reply.tools_used}
         guard_flags += reply.guard_flags
         latency_ms += reply.latency_ms
+        input_tokens += reply.input_tokens
+        output_tokens += reply.output_tokens
         reply_text = reply.text
         degraded = degraded or reply.degraded
         transcript.append({"customer": turn, "agent": reply.text, "tools": reply.tools_used})
@@ -65,6 +70,8 @@ def run_case(case: Case, data: StoreData, policies: PolicyBook, llm, db_path: Pa
         "failures": failures,
         "guard_flags": guard_flags,
         "latency_ms": latency_ms,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
         "transcript": transcript,
     }
 
@@ -115,7 +122,10 @@ def main() -> int:
     rate = total_passed / len(results) if results else 0
     latencies = sorted(r["latency_ms"] / max(len(r["transcript"]), 1) for r in results)
     median = latencies[len(latencies) // 2] if latencies else 0
+    total_input = sum(r["input_tokens"] for r in results)
+    total_output = sum(r["output_tokens"] for r in results)
     print(f"\nTotal: {total_passed}/{len(results)} ({rate:.0%}) | median latency per turn: {median / 1000:.1f} s | model: {settings.model}")
+    print(f"Tokens reported by the provider: {total_input} input, {total_output} output")
 
     if args.save:
         REPORTS_DIR.mkdir(exist_ok=True)
@@ -128,6 +138,8 @@ def main() -> int:
             "passed": total_passed,
             "total": len(results),
             "median_latency_seconds_per_turn": round(median / 1000, 1),
+            "input_tokens": total_input,
+            "output_tokens": total_output,
             "results": results,
         }
         path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")

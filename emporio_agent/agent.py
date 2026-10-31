@@ -42,6 +42,8 @@ class AgentReply:
     degraded: bool = False
     guard_flags: list[str] = field(default_factory=list)
     latency_ms: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 def _wrap_customer_message(text: str, context_line: str) -> str:
@@ -122,7 +124,15 @@ class ServiceAgent:
         self._storage.record_turn(
             session_id, customer_text, text, trace, latency_ms, usage["input"], usage["output"], guard_flags
         )
-        return AgentReply(text=text, tools_used=trace, degraded=degraded, guard_flags=guard_flags, latency_ms=latency_ms)
+        return AgentReply(
+            text=text,
+            tools_used=trace,
+            degraded=degraded,
+            guard_flags=guard_flags,
+            latency_ms=latency_ms,
+            input_tokens=usage["input"],
+            output_tokens=usage["output"],
+        )
 
     def _run_turn(
         self,

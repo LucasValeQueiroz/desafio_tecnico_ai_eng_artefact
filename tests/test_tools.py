@@ -92,6 +92,32 @@ def test_record_conflict_hides_description(tools):
     assert "alerta_cadastro" in product and "descricao" not in product
 
 
+def test_conflicting_description_is_hidden_in_every_result(tools):
+    found = tools.search_products(category="Baixos")["produtos"]
+    assert found and all("Jazz Bass" not in json.dumps(p, ensure_ascii=False) for p in found)
+    alternatives = tools.get_product("Ibanez Bass 2X")["produtos"][0]["alternativas_disponiveis"]
+    assert alternatives and all("descricao" not in a and "alerta_cadastro" in a for a in alternatives if a["id"] == 135)
+
+
+def test_every_result_carries_details_so_nothing_needs_inventing(tools):
+    for product in tools.search_products(category="Violões")["produtos"]:
+        assert product["especificacoes"] and product["descricao"]
+    alternatives = tools.get_product("Shelby SN-7C")["produtos"][0]["alternativas_disponiveis"]
+    assert all(a["especificacoes"] and a["descricao"] for a in alternatives)
+
+
+def test_purchase_contact_matches_the_manual(tools, policies):
+    from emporio_agent.tools import HOW_TO_BUY
+
+    company = policies.sections["1.2"].body
+    assert "(67) 3341-4444" in company and "contato@emporiodamusica.com.br" in company
+    assert "Rua 14 de Maio, 3200" in company
+    for fact in ("(67) 3341-4444", "contato@emporiodamusica.com.br", "Rua 14 de Maio, 3200"):
+        assert fact in HOW_TO_BUY
+    assert tools.get_product("Takamine GD20")["como_comprar"] == HOW_TO_BUY
+    assert tools.search_products(category="Violões")["como_comprar"] == HOW_TO_BUY
+
+
 def test_unknown_product_is_not_found(tools):
     assert tools.get_product("Stradivarius Messiah")["status"] == "produto_nao_encontrado"
 

@@ -78,6 +78,8 @@ Doing nothing keeps the team overloaded. Doing this carelessly would put a confi
 - **RF-09** — When a product is out of stock, the system shall report it as temporarily unavailable; when discontinued, as no longer in the catalog; when not yet launched, as not available for purchase yet. In all three cases it shall suggest similar products that can be bought.
 - **RF-10** — When a product record has conflicting information, the system shall not assert the conflicting details, and shall offer to confirm them with the team.
 - **RF-11** — When a customer asks for an instrument with no matching record, the system shall say it is not in the catalog rather than assuming it exists.
+- **RF-26** — The system shall describe a specific product only with information from its record, and shall say it doesn't have a detail that isn't there. General musical explanations remain welcome.
+- **RF-26** — The system shall describe a specific product only with information from its record, and shall say it doesn't have a detail that isn't there. General musical explanations remain welcome.
 
 ### Orders and identity
 - **RF-12** — When a customer asks about a specific order, the system shall disclose order data only after the customer provides the order number plus the email or phone on file, or, without an order number, both the email and the phone on file.
@@ -238,6 +240,11 @@ Doing nothing keeps the team overloaded. Doing this carelessly would put a confi
 **When** the failure happens
 **Then** the customer receives the store's contact details and the conversation history stays usable.
 
+### AC-25 (covers RF-26)
+**Given** a product detail, popularity or delivery claim that isn't in the records
+**When** the customer asks about it, or the system presents options
+**Then** the reply doesn't assert it, and offers to confirm the detail with the team when asked.
+
 ---
 
 ## 8. Domain Model Impact
@@ -293,3 +300,4 @@ No blocking question remains. The challenge explicitly asks for reasonable, docu
 |------|--------|--------|
 | 2026-10-31 | Lucas Vale Queiroz | Initial draft from the challenge brief, the manual and data profiling |
 | 2026-10-31 | Lucas Vale Queiroz | Added RNF-08 and A9 for a public demo |
+| 2026-10-31 | Lucas Vale Queiroz | Added RF-26 and AC-25 after reading live conversations, in which the model embellished products with its own knowledge |

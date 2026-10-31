@@ -53,6 +53,12 @@ PAYMENT_LABEL = {
     "credit_12x": "cartão de crédito em 12x",
 }
 
+# Returned with product results, so that a purchase question doesn't need an extra consultation.
+HOW_TO_BUY = (
+    "Com a equipe pelo telefone ou WhatsApp (67) 3341-4444, pelo e-mail contato@emporiodamusica.com.br, "
+    "ou na loja: Rua 14 de Maio, 3200 — Centro, Campo Grande - MS."
+)
+
 RECORD_CONFLICT_NOTE = (
     "O cadastro deste produto tem informações conflitantes entre nome e descrição. "
     "Informe apenas nome, preço e disponibilidade, e ofereça confirmar os detalhes técnicos com a equipe."
@@ -140,7 +146,13 @@ class StoreTools:
             "categoria": product.category_name,
             "disponibilidade": AVAILABILITY_LABEL[product.availability],
             **self._quote(product),
+            "especificacoes": product.specs,
         }
+        # Records are the only source for product details, so every result carries them.
+        if product.record_conflict:
+            summary["alerta_cadastro"] = RECORD_CONFLICT_NOTE
+        else:
+            summary["descricao"] = product.description
         if product.availability == IN_STOCK:
             summary["unidades_em_estoque"] = product.stock
         return summary
@@ -171,6 +183,7 @@ class StoreTools:
             "total_encontrado": len(products),
             "produtos": [self._summary(p) for p in products[:SEARCH_LIMIT]],
             "observacao": "Somente produtos disponíveis para compra. Filtros de preço usam o preço atual, antes do desconto de PIX.",
+            "como_comprar": HOW_TO_BUY,
         }
 
     def _filter_by_text(self, products: list[Product], query: str) -> list[Product]:
@@ -220,11 +233,6 @@ class StoreTools:
         details = []
         for product in matches:
             item = self._summary(product)
-            item["especificacoes"] = product.specs
-            if product.record_conflict:
-                item["alerta_cadastro"] = RECORD_CONFLICT_NOTE
-            else:
-                item["descricao"] = product.description
             expired = [
                 {"nome": p.description, "desconto": f"{p.discount_percent}%"}
                 for p in self._data.promotions_for(product.id) if not p.active
@@ -234,7 +242,7 @@ class StoreTools:
             if not product.sellable:
                 item["alternativas_disponiveis"] = self._alternatives(product)
             details.append(item)
-        return {"status": "ok", "produtos": details}
+        return {"status": "ok", "produtos": details, "como_comprar": HOW_TO_BUY}
 
     def list_active_promotions(self) -> dict:
         promoted = [
@@ -449,7 +457,7 @@ def tool_schemas(policies: PolicyBook, categories: list[str]) -> list[dict]:
         },
         {
             "name": "get_product",
-            "description": "Consulta um produto específico pelo nome ou modelo, em qualquer situação: preço, promoção ativa ou encerrada, parcelamento, disponibilidade, especificações e alternativas. Use sempre que o cliente citar um produto.",
+            "description": "Consulta um produto específico pelo nome ou modelo, em qualquer situação: preço, promoção ativa ou encerrada, parcelamento, disponibilidade, descrição, especificações e alternativas. Use quando o cliente citar um produto que ainda não veio em uma consulta.",
             "parameters": {
                 "type": "object",
                 "properties": {"query": {"type": "string", "description": "Nome ou modelo do produto. Ex.: Takamine GD20."}},
