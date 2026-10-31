@@ -29,7 +29,7 @@ A small Python package with a hand-written tool-calling loop. The LLM decides *w
 
 ## 3. Affected Components
 
-### Agent (`src/emporio_agent/`)
+### Agent (`emporio_agent/`)
 | Module | Responsibility | Spec |
 |---|---|---|
 | `config.py` | Settings from environment, optional fixed clock | RNF-02, RNF-06 |
