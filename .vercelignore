@@ -1,0 +1,11 @@
+tests/
+specs/
+docs/
+evals/
+examples/
+scripts/
+submission/
+*.pdf
+*.db
+requirements-dev.txt
+pytest.ini

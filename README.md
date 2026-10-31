@@ -24,23 +24,13 @@ pip install -r requirements.txt
 cp .env.example .env           # Windows: copy .env.example .env
 ```
 
-Edit `.env` and choose a model. Claude is the default:
+Edit `.env` and set a Gemini key, which [Google AI Studio](https://aistudio.google.com/apikey) provides, including on a free tier. That's the only required setting:
 
 ```bash
-LLM_PROVIDER=anthropic
 LLM_API_KEY=your-key
 ```
 
-To run at no cost, use a free tier instead. Any OpenAI-compatible endpoint works, and `.env.example` has ready settings for Google AI Studio, Groq and local Ollama:
-
-```bash
-LLM_PROVIDER=openai_compatible
-LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-LLM_MODEL=gemini-2.5-flash
-LLM_API_KEY=your-free-key
-```
-
-Free-tier model names change often, so check the provider's current list if one is rejected.
+`.env.example` shows how to use Claude, any other OpenAI-compatible endpoint, or a local model instead.
 
 Then talk to the agent:
 
@@ -110,13 +100,11 @@ The manual has 8 pages and 28 numbered sections. Its table of contents goes in t
 
 Catalog and order questions don't go through retrieval at all, since similarity search can't reliably answer "under R$ 1000".
 
-### Model and provider: Claude by default, free alternative by configuration
+### Model and provider: Gemini by default, replaceable by configuration
 
-`claude-opus-5-5` is the default because of its reliable tool use and natural Portuguese, at USD 4 / 20 per million input / output tokens with prompt caching on the stable prefix. A small adapter in [`llm.py`](emporio_agent/llm.py) also speaks to any OpenAI-compatible endpoint, so evaluators can run it for free. ([ADR-003](specs/adr/ADR-003-provider-adapter.md))
+The default is `gemini-3.8-flash`, at USD 0.75 / 3.75 per million input / output tokens until 2026-12-31 and USD 1.50 / 7.50 after that. Short service replies don't need a flagship model, it supports function calling, and Google's free tier means an evaluator can run the same setup at no cost. I started with the cheaper option and let the evaluation suite decide whether it was enough. ([ADR-005](specs/adr/ADR-005-gemini-as-primary-model.md))
 
-For production I wouldn't assume Opus is needed. A customer service bot is a natural fit for a cheaper model, and the evaluation suite exists to measure exactly that: run it on Sonnet or Haiku, and keep the cheapest model that holds the score.
-
-Claude's server-side refusal fallback is on, and refusals end in the safe message rather than an empty reply.
+A small adapter in [`llm.py`](emporio_agent/llm.py) isolates the provider, so business code imports no SDK and changing model is one environment variable. It speaks to any OpenAI-compatible endpoint, and also to Claude through Anthropic's own SDK. The Claude path is covered by unit tests with a fake client, but I haven't run it against the live API, so results here apply only to the model in the evaluation report. On every provider, a refusal ends in the safe message rather than an empty reply.
 
 ### Rules in code, and a safety net
 
@@ -153,6 +141,13 @@ The manual is extracted with `pdfplumber` into [reviewable Markdown](emporio_age
 
 The challenge's focus is the agent, so the CLI comes first. A small FastAPI layer and a one-page chat exist because the real channel is WhatsApp: the store's next step would be a webhook calling `POST /api/v1/chat`.
 
+### Public demo on Vercel
+
+The same app can run on Vercel, so that someone can try it without installing anything. ([ADR-006](specs/adr/ADR-006-public-demo-on-vercel.md)) To deploy your own, import the repository as a Vercel project and set `LLM_API_KEY` in its environment variables. Two trade-offs come with it:
+
+- **State is temporary.** Functions can only write to a temporary directory, so conversations, tickets and the verification lockout can reset when an instance changes. A managed database would be the first change for real traffic. The local version doesn't have this limitation.
+- **A public URL can spend the key.** The API limits messages per client and per day before calling the model, and interactive API docs are off. These counters are per instance, so the provider's spending cap is the real ceiling.
+
 ### Conversation persistence: yes, in SQLite
 
 A follow-up like "e esse parcela?" needs history, and customers return to a conversation later. SQLite is in the standard library and needs no server. Each turn also records consultations, latency, tokens and safety-net results, with verification data redacted from the audit trail.
@@ -174,10 +169,11 @@ The brief asks for documented assumptions when information is missing. Each one 
 | A9 | The clock is real unless `AGENT_NOW` is set | Data ends in March 2026, so examples and evaluation fix a date inside the period |
 | A10 | The recruiter's "all responses must be in English" covers documents and code; the agent speaks Portuguese to customers | The store's customers are Brazilian |
 | A11 | Holidays are national fixed dates only | Municipal and movable holidays aren't available to the system |
+| A12 | The public demo may lose a conversation's memory or a ticket | Serverless functions have temporary storage, which is acceptable for a short evaluation |
 
 ## Evaluation
 
-**Offline:** 140 tests cover pricing boundaries, identity rules, return windows, the safety net, the agent loop, API and adapters. They need no key or network.
+**Offline:** the test suite cover pricing boundaries, identity rules, return windows, the safety net, the agent loop, API and adapters. They need no key or network.
 
 **Live:** [`evals/cases.py`](evals/cases.py) has 44 scenarios with deterministic assertions on tools used and reply content. Data leakage and manipulation have zero tolerance.
 
@@ -190,7 +186,8 @@ Live results are pending a run with an LLM credential.
 **Known limitations**
 
 - **Identity is knowledge-based.** Anyone who knows an order number and its email can see that order. A real deployment would use the verified number from the messaging channel.
-- **Lockout is per conversation.** A new conversation resets the counter. Production needs limits by order and origin. The API also has no authentication and binds to localhost for that reason.
+- **Lockout is per conversation.** A new conversation resets the counter. Production needs limits by order and origin. The API also has no authentication, so locally it binds to localhost, and the public demo holds only fictional data.
+- **The public demo keeps temporary state.** See [Public demo on Vercel](#public-demo-on-vercel).
 - **The safety net only sees numbers.** A wrong non-numeric claim, like a false product feature, passes through. The prompt and the evaluation cover those, but without a guarantee. It can also block a legitimate calculated amount, in which case the customer gets the safe message.
 - **Tickets are only recorded.** Nobody is notified. Conversations stored locally include personal data typed by customers, with no retention policy.
 - **Stock is a snapshot.** Records load at startup.
@@ -202,7 +199,7 @@ Live results are pending a run with an LLM credential.
 
 1. A WhatsApp webhook with identity from the channel, which would also remove most of the verification friction.
 2. Automatic notification of tickets to the team, plus a small inbox, since the team is who this helps.
-3. Cheaper-model benchmarking with the existing suite, and cost per conversation in the audit trail.
+3. Model benchmarking with the existing suite, and cost per conversation in the audit trail.
 4. Evaluation with a judge model for tone and with real conversations, feeding the suite from production failures.
 5. Live connections to stock and order systems, and an LGPD retention policy with a deletion flow.
 6. A semantic review of replies for high-risk topics, if measurement shows the numeric check isn't enough.
@@ -217,7 +214,6 @@ I used **Claude Code** (desktop app, Claude Opus 5.5) as the main tool in this p
 4. **Verification.** The offline tests, the live evaluation suite and a browser check of the chat page were used to check its work, rather than trusting a report of success. Example conversations are generated by a script and not edited.
 5. **Review.** Human-only steps are listed in [`tasks.md`](specs/2026-10-emporio-service-agent/tasks.md). Reviewing the result, running it from a fresh clone and submitting it are mine.
 
-The assistant's commits carry a `Co-Authored-By` line, so its participation is visible throughout the history.
 
 ## Project layout
 

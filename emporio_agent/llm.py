@@ -1,4 +1,4 @@
-"""Provider adapters. This is the only module that imports a provider SDK (ADR-003).
+"""Provider adapters. This is the only module that imports a provider SDK (ADR-003, ADR-005).
 
 History is kept in each provider's native message format, so a session stays with its provider
 and Claude's content blocks, including thinking blocks, are replayed unchanged.
@@ -152,6 +152,7 @@ class OpenAICompatibleLLM:
         try:
             response = self._client.chat.completions.create(
                 model=self.model,
+                max_tokens=MAX_OUTPUT_TOKENS,
                 messages=[{"role": "system", "content": system}, *messages],
                 tools=[
                     {
@@ -209,8 +210,9 @@ class OpenAICompatibleLLM:
 def build_llm(settings: Settings) -> LLMClient:
     if settings.provider == ANTHROPIC:
         if not settings.api_key:
-            raise ConfigError("Set LLM_API_KEY (or ANTHROPIC_API_KEY) in .env. See .env.example for a free alternative.")
+            raise ConfigError("Set LLM_API_KEY (or ANTHROPIC_API_KEY) in .env. See .env.example.")
         return AnthropicLLM(settings)
-    if not settings.base_url:
-        raise ConfigError("LLM_BASE_URL is required with the openai_compatible provider. See .env.example.")
+    is_local = "localhost" in (settings.base_url or "") or "127.0.0.1" in (settings.base_url or "")
+    if not settings.api_key and not is_local:
+        raise ConfigError("Set LLM_API_KEY (or GEMINI_API_KEY) in .env. See .env.example.")
     return OpenAICompatibleLLM(settings)

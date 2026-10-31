@@ -18,12 +18,13 @@ A small Python package with a hand-written tool-calling loop. The LLM decides *w
 
 - **AD-01** — Function calling with a hand-written loop, no agent framework. See ADR-001.
 - **AD-02** — Manual retrieval by section routing, no embeddings. See ADR-002.
-- **AD-03** — Provider adapter with Claude as default and any OpenAI-compatible endpoint as a free alternative. See ADR-003.
+- **AD-03** — Provider adapter with Gemini as default through its OpenAI-compatible endpoint, and Claude as an alternative. See ADR-003 and ADR-005.
 - **AD-04** — Identity, pricing and eligibility enforced in code, not in the prompt. See ADR-004.
 - **AD-05** — Typed tools, no text-to-SQL. Rationale: a 6-table dataset and a closed list of questions don't justify it, and generated SQL over a customer table is a data-leak surface that AD-04 exists to remove.
 - **AD-06** — SQLite (standard library) for conversations and tickets. Rationale: conversations must survive restarts (RF-02), no server needed.
 - **AD-07** — Clock context travels in each user turn rather than in the system prompt. Rationale: the system prompt stays byte-identical, so the prompt cache keeps hitting, and history stays append-only, which models that replay thinking blocks require.
-- **New ADR required:** yes, ADR-001 to ADR-004 in `specs/adr/`.
+- **AD-08** — Public demo on Vercel, with temporary SQLite, application rate limits and a provider spending cap. See ADR-006.
+- **New ADR required:** yes, ADR-001 to ADR-006 in `specs/adr/`.
 
 ---
 
@@ -53,7 +54,7 @@ A small Python package with a hand-written tool-calling loop. The LLM decides *w
 - `tests/` — offline tests with a scripted fake LLM.
 
 ### Infrastructure
-None. Local Python process; no deployment in scope.
+Local Python process, plus an optional public demo on Vercel: `app.py` as the entry point, `vercel.json`, `.vercelignore`, and settings in the platform's environment. See ADR-006.
 
 ---
 
@@ -183,4 +184,4 @@ Errors: `422` validation (`error.code = "INVALID_REQUEST"`). A language-service 
 
 | Date | Author | Change |
 |------|--------|--------|
-| 2026-10-31 | Lucas Vale Queiroz, with Claude Code | Initial plan |
+| 2026-10-31 | Lucas Vale Queiroz | Initial plan |

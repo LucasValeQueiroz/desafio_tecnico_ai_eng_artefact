@@ -76,6 +76,11 @@
         body: JSON.stringify({ session_id: sessionId, message }),
       });
       const body = await response.json();
+      if (body.error && body.error.code === "RATE_LIMITED") {
+        pending.textContent = body.error.message;
+        pending.classList.remove("pending");
+        return;
+      }
       if (body.error) throw new Error(body.error.message);
       sessionId = body.data.session_id;
       pending.textContent = body.data.reply;

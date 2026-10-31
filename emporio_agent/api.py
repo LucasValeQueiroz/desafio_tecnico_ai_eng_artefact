@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import threading
+import time
 import uuid
-from collections import defaultdict
+from collections import defaultdict, deque
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -15,6 +16,9 @@ from .agent import MAX_MESSAGE_CHARS, ServiceAgent
 from .config import load_settings
 
 CHAT_PAGE = Path(__file__).parent / "static" / "index.html"
+MINUTE_SECONDS = 60
+DAY_SECONDS = 86400
+RATE_LIMITED_MESSAGE = "Muitas mensagens em pouco tempo. Aguarde um instante e tente de novo."
 
 
 class ChatRequest(BaseModel):
@@ -22,14 +26,55 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
 
 
+class RateLimiter:
+    """Limits messages per client and overall, protecting the paid key behind a public URL.
+
+    The counters live in the process, so on serverless they apply per instance. This slows down
+    casual abuse. The hard ceiling is the spending cap set at the LLM provider (ADR-006).
+    """
+
+    def __init__(self, per_minute: int = 10, per_day: int = 300, clock=time.monotonic) -> None:
+        self._per_minute = per_minute
+        self._per_day = per_day
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._by_client: defaultdict[str, deque[float]] = defaultdict(deque)
+        self._all: deque[float] = deque()
+
+    def allow(self, client: str) -> bool:
+        now = self._clock()
+        with self._lock:
+            while self._all and now - self._all[0] >= DAY_SECONDS:
+                self._all.popleft()
+            recent = self._by_client[client]
+            while recent and now - recent[0] >= MINUTE_SECONDS:
+                recent.popleft()
+            if len(recent) >= self._per_minute or len(self._all) >= self._per_day:
+                return False
+            recent.append(now)
+            self._all.append(now)
+            return True
+
+
+def _client_address(request: Request) -> str:
+    # The platform's proxy sets this header. Without a proxy, the socket address is used.
+    forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    return forwarded or (request.client.host if request.client else "unknown")
+
+
 def _envelope(data=None, meta: dict | None = None, error: dict | None = None, status: int = 200) -> JSONResponse:
     meta = {"request_id": str(uuid.uuid4()), **(meta or {})}
     return JSONResponse(status_code=status, content={"data": data, "meta": meta, "error": error})
 
 
-def create_app(agent: ServiceAgent | None = None) -> FastAPI:
-    agent = agent or ServiceAgent.from_settings(load_settings())
-    app = FastAPI(title="Empório da Música service agent")
+def create_app(agent: ServiceAgent | None = None, limiter: RateLimiter | None = None) -> FastAPI:
+    if agent is None:
+        settings = load_settings()
+        agent = ServiceAgent.from_settings(settings)
+        limiter = limiter or RateLimiter(settings.rate_limit_per_minute, settings.rate_limit_per_day)
+    limiter = limiter or RateLimiter()
+
+    app = FastAPI(title="Empório da Música service agent", docs_url=None, redoc_url=None, openapi_url=None)
     # One turn at a time per conversation, since a turn rewrites that conversation's history.
     session_locks: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)
 
@@ -47,10 +92,12 @@ def create_app(agent: ServiceAgent | None = None) -> FastAPI:
         return _envelope(data={"status": "ok"})
 
     @app.post("/api/v1/chat")
-    def chat(request: ChatRequest) -> JSONResponse:
-        session_id = request.session_id or uuid.uuid4().hex[:12]
+    def chat(body: ChatRequest, request: Request) -> JSONResponse:
+        if not limiter.allow(_client_address(request)):
+            return _envelope(error={"code": "RATE_LIMITED", "message": RATE_LIMITED_MESSAGE}, status=429)
+        session_id = body.session_id or uuid.uuid4().hex[:12]
         with session_locks[session_id]:
-            reply = agent.reply(session_id, request.message)
+            reply = agent.reply(session_id, body.message)
         return _envelope(
             data={"session_id": session_id, "reply": reply.text},
             meta={

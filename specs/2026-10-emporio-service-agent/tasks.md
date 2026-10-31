@@ -127,6 +127,23 @@
   - DEP: T-16; blocked on an LLM credential
   - done when: `examples/` has 5 conversations produced by `scripts/generate_examples.py`, with at least one non-trivial case
 
+- [x] **T-23** Gemini as the default model, needing only a key
+  - covers: RNF-02, RNF-07
+  - done when: tests assert the defaults and a clear error for a missing key
+
+- [x] **T-24** Serverless entry point and temporary storage location
+  - covers: RNF-05, A9
+  - done when: tests assert the database path on Vercel and that runtime files aren't excluded from the bundle
+
+- [x] **T-25** Rate limits on the HTTP API
+  - covers: RNF-08
+  - done when: tests assert a 429 envelope without a model call, and recovery after the window
+
+- [!] **T-26** Smoke test of the public URL
+  - covers: AC-04, AC-14, RNF-08
+  - DEP: H-07; blocked on the project existing on Vercel
+  - done when: the URL's chat page answers a catalog and a policy question
+
 ---
 
 ## Local Validation Gate — HUMAN ONLY
@@ -157,6 +174,14 @@
 
 - [ ] **H-06** Freeze the repository
   - done when: no commit exists after the delivery date and time; spec marked `Implemented`
+
+- [ ] **H-07** Create the Vercel project and set a spending cap
+  - covers: RNF-08
+  - done when: the repository is imported, `LLM_API_KEY` is set in the project, and the provider has a budget limit
+
+- [ ] **H-08** Take the demo down after the selection process
+  - covers: RNF-08
+  - done when: the Vercel project is removed and the key is rotated
 
 ---
 
@@ -195,7 +220,8 @@
 | RNF-04 | T-12 | — |
 | RNF-05 | T-16 | AC-02, AC-24 |
 | RNF-06 | T-07, T-16 | — |
-| RNF-07 | T-02, T-17, T-20, H-01 | — |
+| RNF-07 | T-02, T-17, T-20, T-23, H-01 | — |
+| RNF-08 | T-25, T-26, H-07, H-08 | — |
 
 **Reading the matrix:** `T-` entries may be executed by an agent. `H-` entries are human-only. Live behavior is demonstrated by T-21 and T-22, and finally closed by a person in H-01 and H-02, never by an agent reporting success.
 

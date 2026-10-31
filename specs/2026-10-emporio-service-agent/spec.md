@@ -5,7 +5,7 @@
 **Owner:** Lucas Vale Queiroz
 **Created:** 2026-10-31
 **Last updated:** 2026-10-31
-**Related ADRs:** ADR-001, ADR-002, ADR-003, ADR-004
+**Related ADRs:** ADR-001 to ADR-006
 
 > **Rule:** This document describes **WHAT** and **WHY**, never HOW.
 
@@ -112,6 +112,7 @@ Doing nothing keeps the team overloaded. Doing this carelessly would put a confi
 - **RNF-05 (Reliability)** — A failed consultation or service call never crashes the conversation and never loses earlier history.
 - **RNF-06 (Testability)** — All business rules can be tested without credentials or network. The current date and time can be fixed so results are reproducible.
 - **RNF-07 (Simplicity)** — An evaluator can go from a fresh clone to a running conversation in under five minutes. Components are added only when they earn their place.
+- **RNF-08 (Cost protection)** — When the system is publicly reachable, excess messages are refused before they consume the language service, and the provider's spending is capped outside the application.
 
 ---
 
@@ -268,6 +269,7 @@ Doing nothing keeps the team overloaded. Doing this carelessly would put a confi
 - **A6 — Catalog size:** the manual claims over 300 instruments and categories such as wind and orchestral strings; records have 65 products and none in those categories. The records are the truth for what can be sold.
 - **A7 — Current date:** the dataset ends in March 2026 while the assessment happens in October 2026. The system uses the real clock unless a fixed date is configured, and a past-due shipped order is reported as such.
 - **A8 — Language:** customers write in Brazilian Portuguese. Project documents are in English, as the recruiter's email requires.
+- **A9 — Public demo:** a demo for evaluators may lose a conversation's memory or a registered ticket when its temporary environment is replaced. The full behavior is in the local version.
 
 ## 11. Open Questions
 
@@ -289,4 +291,5 @@ No blocking question remains. The challenge explicitly asks for reasonable, docu
 
 | Date | Author | Change |
 |------|--------|--------|
-| 2026-10-31 | Lucas Vale Queiroz, with Claude Code | Initial draft from the challenge brief, the manual and data profiling |
+| 2026-10-31 | Lucas Vale Queiroz | Initial draft from the challenge brief, the manual and data profiling |
+| 2026-10-31 | Lucas Vale Queiroz | Added RNF-08 and A9 for a public demo |

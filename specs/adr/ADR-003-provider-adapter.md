@@ -1,6 +1,6 @@
 # ADR-003: Claude by default, free alternative through a provider adapter
 
-**Status:** Accepted
+**Status:** Superseded by ADR-005 for the default model. The adapter interface described here stays.
 **Date:** 2026-10-31
 **Deciders:** Lucas Vale Queiroz
 **Related:** SPEC-2026-10-emporio-service-agent
