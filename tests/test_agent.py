@@ -118,6 +118,15 @@ def test_unknown_tool_becomes_a_tool_error(make_agent):
     assert agent.reply("c1", "Oi").tools_used[0]["status"] == "erro"
 
 
+def test_unexpected_tool_failure_does_not_end_the_conversation(make_agent, data, monkeypatch):
+    monkeypatch.setattr(data, "active_promotion", lambda _: 1 / 0)
+    agent, llm = make_agent([tool_turn("list_active_promotions"), tool_turn("get_product", query="Takamine GD20"), "Melhor falar com a equipe."])
+    reply = agent.reply("c1", "Preço?")
+    assert reply.text == "Melhor falar com a equipe."
+    assert reply.tools_used[1]["status"] == "erro"
+    assert "ZeroDivisionError" not in llm.requests[-1][-1]["content"]
+
+
 def test_empty_reply_is_not_sent(make_agent):
     agent, _ = make_agent(["   "])
     assert agent.reply("c1", "Oi").text == SAFE_REPLY

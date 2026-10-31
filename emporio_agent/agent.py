@@ -172,8 +172,13 @@ class ServiceAgent:
             output = tools.execute(call.name, call.arguments)
             is_error = False
         except (TypeError, ValueError, KeyError) as error:
-            logger.warning("Tool %s failed: %s", call.name, error)
+            logger.warning("Tool %s rejected its arguments: %s", call.name, error)
             output = {"status": "erro", "detalhe": f"Consulta inválida: {error}"}
+            is_error = True
+        except Exception:
+            # A failed consultation must never take the conversation down (RNF-05).
+            logger.exception("Tool %s failed", call.name)
+            output = {"status": "erro", "detalhe": "Consulta indisponível. Não invente a informação; ofereça a equipe."}
             is_error = True
         content = json.dumps(output, ensure_ascii=False, sort_keys=True)
         evidence.add_trusted_text(content)

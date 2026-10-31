@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import pytest
@@ -287,6 +288,12 @@ def test_ticket_outside_hours_states_reopening(make_tools):
 def test_protocols_are_sequential(tools):
     assert tools.register_ticket("encaminhamento", "a")["protocolo"].endswith("0001")
     assert tools.register_ticket("encaminhamento", "b")["protocolo"].endswith("0002")
+
+
+def test_concurrent_tickets_get_distinct_protocols(tools):
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(lambda i: tools.register_ticket("encaminhamento", f"caso {i}"), range(16)))
+    assert len({r["protocolo"] for r in results}) == 16
 
 
 def test_invalid_ticket_kind_is_rejected(tools):

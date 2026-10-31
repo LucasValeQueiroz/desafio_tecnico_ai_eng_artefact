@@ -24,20 +24,20 @@
   - covers: all
   - done when: all four are committed and every RF appears in the matrix below
 
-- [ ] **T-02** Project skeleton and settings from environment
+- [x] **T-02** Project skeleton and settings from environment
   - covers: RNF-02, RNF-07
-  - done when: `pip install -r requirements.txt` works and `.env` is git-ignored
+  - done when: `pip install -r requirements.txt` works, the package runs from the repository root, and `.env` is git-ignored
 
-- [ ] **T-03** Load and normalize store records, with availability and record-conflict detection
+- [x] **T-03** Load and normalize store records, with availability and record-conflict detection
   - covers: RF-04, RF-09, RF-10
   - done when: tests assert products 130 and 136 are not sellable, and conflict detection flags exactly 135, 136, 137, 139, 140, 142 and 144
 
-- [ ] **T-04** Data-quality report
+- [x] **T-04** Data-quality report
   - covers: RF-10, RF-18
   - DEP: T-03
   - done when: `scripts/profile_data.py` writes `docs/data_quality.md` listing the mismatched totals of orders 3 and 20
 
-- [ ] **T-05** Manual knowledge base with resolution notes
+- [x] **T-05** Manual knowledge base with resolution notes
   - covers: RF-16, RF-18
   - done when: `scripts/build_policy_kb.py` regenerates `knowledge/policies.md` and tests assert all 28 numbered sections exist
 
@@ -45,61 +45,61 @@
 
 ## Phase 2 — Backend
 
-- [ ] **T-06** Price quote rules
+- [x] **T-06** Price quote rules
   - covers: RF-06, RF-07
   - done when: tests assert Takamine GD20 PIX R$ 2.089,05, Ohana CK-20 R$ 439,20 without PIX, and installment limits at each boundary
 
-- [ ] **T-07** Store clock with holidays and next opening
+- [x] **T-07** Store clock with holidays and next opening
   - covers: RF-03, RNF-06
   - done when: a test asserts Saturday 2026-10-31 14:00 reopens Tuesday 2026-11-03 09:00
 
-- [ ] **T-08** Catalog tools
+- [x] **T-08** Catalog tools
   - covers: RF-04, RF-05, RF-08, RF-09, RF-10, RF-11
   - DEP: T-03, T-06
   - done when: tests assert exactly 12 acoustic guitars at or under R$ 1.000,00 and that "gd20" finds product 95
 
-- [ ] **T-09** Policy tool
+- [x] **T-09** Policy tool
   - covers: RF-16
   - DEP: T-05
   - done when: a test asserts asking for section 4 returns 4.1 to 4.4, and the table of contents is deterministic
 
-- [ ] **T-10** Order verification
+- [x] **T-10** Order verification
   - covers: RF-12, RF-13, RF-14, RF-15, RNF-03
   - DEP: T-03
   - done when: tests assert identical failure payloads for existing and non-existing orders, lockout after three failures, and no email or phone in any tool output
 
-- [ ] **T-11** Return assessment
+- [x] **T-11** Return assessment
   - covers: RF-17
   - DEP: T-10
   - done when: tests cover each reason across delivered in and out of window, shipped, pending and cancelled
 
-- [ ] **T-12** Conversation storage and tickets
+- [x] **T-12** Conversation storage and tickets
   - covers: RF-02, RF-21, RF-22, RNF-04
   - done when: tests assert sessions survive a new connection, tickets return a protocol, and audit trails contain no verification factors
 
-- [ ] **T-13** Traceability safety net
+- [x] **T-13** Traceability safety net
   - covers: RF-24
   - done when: tests assert Brazilian amount formats normalize correctly and an unknown amount or percentage is flagged
 
-- [ ] **T-14** Provider adapters
+- [x] **T-14** Provider adapters
   - covers: RNF-02, RF-25
   - done when: tests with fake SDK clients assert request shape and normalized output for both adapters
 
-- [ ] **T-15** Persona and system prompt
+- [~] **T-15** Persona and system prompt
   - covers: RF-01, RF-19, RF-20, RF-23
   - done when: the prompt is a versioned file and live evaluation groups for persona, scope and manipulation pass
 
-- [ ] **T-16** Agent loop
+- [x] **T-16** Agent loop
   - covers: RF-02, RF-24, RF-25, RNF-05
   - DEP: T-08, T-09, T-10, T-11, T-12, T-13, T-14, T-15
   - done when: tests with a scripted LLM cover tool rounds, guard retry, guard fallback, service failure with intact history, and round limit
 
-- [ ] **T-17** CLI
+- [x] **T-17** CLI
   - covers: RF-01, RF-02, RNF-07
   - DEP: T-16
   - done when: a piped conversation with a scripted LLM exits cleanly and `--session` resumes
 
-- [ ] **T-18** HTTP API and one-page chat
+- [x] **T-18** HTTP API and one-page chat
   - covers: RF-01, RF-02
   - DEP: T-16
   - done when: `TestClient` tests assert the envelope on success and validation failure
@@ -108,12 +108,12 @@
 
 ## Phase 3 — Testing & Observability
 
-- [ ] **T-19** Live evaluation suite
+- [x] **T-19** Live evaluation suite
   - covers: all AC groups, Section 12 metrics
   - DEP: T-16
   - done when: `python -m evals.run` prints pass rates per group and writes a JSON report
 
-- [ ] **T-20** README with decisions, assumptions, limitations and assistant workflow
+- [x] **T-20** README with decisions, assumptions, limitations and assistant workflow
   - covers: RNF-07, A1–A8
   - done when: it contains every item required by the challenge's deliverables section
 

@@ -141,6 +141,8 @@ class Storage:
 
     def create_ticket(self, session_id: str, kind: str, summary: str, customer_name: str | None, contact: str | None, now: datetime) -> str:
         with self._connect() as db:
+            # Take the write lock before counting, so that concurrent turns get distinct protocols.
+            db.execute("BEGIN IMMEDIATE")
             sequence = db.execute("SELECT COUNT(*) FROM tickets").fetchone()[0] + 1
             protocol = f"EM-{now:%Y%m%d}-{sequence:04d}"
             db.execute(
