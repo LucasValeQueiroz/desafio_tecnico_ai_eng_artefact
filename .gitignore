@@ -1,0 +1,27 @@
+# Secrets and local state
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Challenge statement and submission files are not part of the project
+desafio_tecnico_ai_eng_artefact.pdf
+submission/
+
+# Local reports
+evals/reports/*.tmp.json
+.claude/
+.vscode/
+.idea/
