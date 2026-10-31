@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empório da Música</title>
+<style>
+  :root {
+    --bg: #f6f3ee; --surface: #ffffff; --text: #26211c; --muted: #6f665c;
+    --accent: #8a3b1e; --on-accent: #ffffff; --line: #e3dcd2; --customer: #f0e3d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1815; --surface: #26221e; --text: #f1ece5; --muted: #a89e92;
+      --accent: #d9794f; --on-accent: #1b1815; --line: #3a342d; --customer: #3b2c22;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 680px; height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; padding: 0 16px; }
+  header { padding: 16px 0 12px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 1.1rem; }
+  header p { margin: 0; color: var(--muted); font-size: .875rem; }
+  #log { flex: 1; overflow-y: auto; padding: 16px 0; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .lia { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); }
+  .customer { align-self: flex-end; background: var(--customer); }
+  .pending { color: var(--muted); }
+  form { display: flex; gap: 8px; padding: 12px 0 16px; border-top: 1px solid var(--line); }
+  input { flex: 1; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; }
+  button { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Empório da Música</h1>
+    <p>Sua música começa aqui. Protótipo de atendimento com a Lia, assistente virtual.</p>
+  </header>
+  <div id="log" role="log" aria-live="polite"></div>
+  <form id="form">
+    <input id="text" aria-label="Sua mensagem" placeholder="Escreva sua mensagem" autocomplete="off" required maxlength="4000">
+    <button id="send" type="submit">Enviar</button>
+  </form>
+</main>
+<script>
+  const log = document.getElementById("log");
+  const form = document.getElementById("form");
+  const input = document.getElementById("text");
+  const send = document.getElementById("send");
+  let sessionId = null;
+
+  function add(text, kind) {
+    const el = document.createElement("div");
+    el.className = "msg " + kind;
+    el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = input.value.trim();
+    if (!message) return;
+    add(message, "customer");
+    input.value = "";
+    send.disabled = true;
+    const pending = add("Lia está digitando...", "lia pending");
+    try {
+      const response = await fetch("/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message }),
+      });
+      const body = await response.json();
+      if (body.error) throw new Error(body.error.message);
+      sessionId = body.data.session_id;
+      pending.textContent = body.data.reply;
+      pending.classList.remove("pending");
+    } catch (error) {
+      pending.textContent = "Não consegui responder agora. Tente de novo em instantes.";
+      pending.classList.remove("pending");
+    } finally {
+      send.disabled = false;
+      input.focus();
+    }
+  });
+  input.focus();
+</script>
+</body>
+</html>
