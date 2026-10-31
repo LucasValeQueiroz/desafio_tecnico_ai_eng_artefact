@@ -85,7 +85,7 @@
   - covers: RNF-02, RF-25
   - done when: tests with fake SDK clients assert request shape and normalized output for both adapters
 
-- [~] **T-15** Persona and system prompt
+- [x] **T-15** Persona and system prompt
   - covers: RF-01, RF-19, RF-20, RF-23
   - done when: the prompt is a versioned file and live evaluation groups for persona, scope and manipulation pass
 
@@ -117,14 +117,14 @@
   - covers: RNF-07, A1–A8
   - done when: it contains every item required by the challenge's deliverables section
 
-- [!] **T-21** Run live evaluation and record results
+- [x] **T-21** Run live evaluation and record results
   - covers: Section 12 metrics
-  - DEP: T-19; blocked on an LLM credential
+  - DEP: T-19
   - done when: the report is committed and the README states the real numbers
 
-- [!] **T-22** Generate 5 real example conversations
+- [x] **T-22** Generate 5 real example conversations
   - covers: challenge deliverable 3
-  - DEP: T-16; blocked on an LLM credential
+  - DEP: T-16
   - done when: `examples/` has 5 conversations produced by `scripts/generate_examples.py`, with at least one non-trivial case
 
 - [x] **T-23** Gemini as the default model, needing only a key
@@ -200,6 +200,7 @@
 | RF-09 | T-03, T-08 | AC-08 |
 | RF-10 | T-03, T-04, T-08 | AC-09 |
 | RF-11 | T-08 | AC-10 |
+| RF-26 | T-08, T-15, T-21 | AC-25 |
 | RF-12 | T-10 | AC-11, AC-12 |
 | RF-13 | T-10 | AC-11 |
 | RF-14 | T-10 | AC-13 |
@@ -229,4 +230,5 @@
 
 ## Notes / Decisions during execution
 
+- 2026-10-31 — The first live run scored 43/44, and the stricter suite 44/44, yet reading the replies showed invented product details that no assertion caught. Tools now return description and specs in every result, the prompt forbids embellishment, and new scenarios cover it. Lesson: read the transcripts, not only the score.
 - 2026-10-31 — The recruiter's email says responses must be in English and submitted as a PDF through a form; the challenge PDF says to reply to the email with the repository link. Both are in the Delivery section so neither is missed.
