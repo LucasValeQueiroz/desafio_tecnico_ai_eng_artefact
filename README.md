@@ -4,6 +4,17 @@ A text-message agent for a fictional musical instrument store in Campo Grande/MS
 
 **The core idea:** the model decides what to consult and how to say it. Deterministic Python decides what is true. A prompt can be argued with, so prices, return windows and access to customer data don't depend on it.
 
+[![tests](https://github.com/LucasValeQueiroz/desafio_tecnico_ai_eng_artefact/actions/workflows/tests.yml/badge.svg)](https://github.com/LucasValeQueiroz/desafio_tecnico_ai_eng_artefact/actions/workflows/tests.yml)
+
+| At a glance | |
+|---|---|
+| Live evaluation | 47 of 47 scenarios on `gemini-3.8-flash`, with no failure in data leakage or manipulation |
+| Offline tests | 162, run on every push with no key or network |
+| Cost | Under one US cent per scenario, measured |
+| For the store | A [business case](docs/business_case.md) with a pilot plan, and the [problems found in its own data](docs/data_quality.md) |
+
+![Demo page. Under each reply, a behind-the-scenes line shows whether Lia consulted store data or the policy manual, and how many values were checked.](docs/demo.jpg)
+
 - [Run it](#run-it)
 - [How it works](#how-it-works)
 - [Technical decisions](#technical-decisions)
@@ -11,6 +22,7 @@ A text-message agent for a fictional musical instrument store in Campo Grande/MS
 - [Evaluation](#evaluation)
 - [Known limitations and what I'd do with more time](#known-limitations-and-what-id-do-with-more-time)
 - [Use of AI coding assistants](#use-of-ai-coding-assistants)
+- [Business case](docs/business_case.md)
 - [Example conversations](examples/)
 
 ## Run it
@@ -141,6 +153,8 @@ The manual is extracted with `pdfplumber` into [reviewable Markdown](emporio_age
 
 The challenge's focus is the agent, so the CLI comes first. A small FastAPI layer and a one-page chat exist because the real channel is WhatsApp: the store's next step would be a webhook calling `POST /api/v1/chat`.
 
+The chat page has a **Bastidores** (behind the scenes) view meant for evaluators. Under each reply, it shows whether Lia consulted store data, the manual or the team, and how many values the safety net checked. The page also offers shortcuts to the main scenarios, including the attacks. Verification data never appears there, and a real customer channel would leave it off.
+
 ### Public demo on Vercel
 
 The same app can run on Vercel, so that someone can try it without installing anything. ([ADR-006](specs/adr/ADR-006-public-demo-on-vercel.md)) To deploy your own, import the repository as a Vercel project and set `LLM_API_KEY` in its environment variables. Two trade-offs come with it:
@@ -173,7 +187,7 @@ The brief asks for documented assumptions when information is missing. Each one 
 
 ## Evaluation
 
-**Offline:** 160 tests cover pricing boundaries, identity rules, return windows, the safety net, the agent loop, API and adapters. They need no key or network.
+**Offline:** 162 tests cover pricing boundaries, identity rules, return windows, the safety net, the agent loop, API and adapters. They need no key or network.
 
 **Live:** [`evals/cases.py`](evals/cases.py) has 47 scenarios with deterministic assertions on tools used and reply content. Data leakage and manipulation have zero tolerance.
 
