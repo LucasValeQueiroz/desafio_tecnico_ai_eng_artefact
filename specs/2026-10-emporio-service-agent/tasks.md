@@ -146,6 +146,20 @@
 
 ---
 
+- [x] **T-27** Show consultations and checked values on the demo page, with scenario shortcuts
+  - covers: RNF-09
+  - done when: a browser check against a live model shows the data and policy labels, and a test asserts no verification data in the response
+
+- [~] **T-28** Run the offline tests in continuous integration
+  - covers: RNF-06, RNF-07
+  - done when: the workflow is committed and its first run on GitHub passes
+
+- [x] **T-29** Business case for the store
+  - covers: Section 12 metrics
+  - done when: `docs/business_case.md` separates measured values from assumptions
+
+---
+
 ## Local Validation Gate — HUMAN ONLY
 
 > **No AI agent may execute, simulate or tick anything in this section.**
@@ -223,6 +237,7 @@
 | RNF-06 | T-07, T-16 | — |
 | RNF-07 | T-02, T-17, T-20, T-23, H-01 | — |
 | RNF-08 | T-25, T-26, H-07, H-08 | — |
+| RNF-09 | T-27 | — |
 
 **Reading the matrix:** `T-` entries may be executed by an agent. `H-` entries are human-only. Live behavior is demonstrated by T-21 and T-22, and finally closed by a person in H-01 and H-02, never by an agent reporting success.
 

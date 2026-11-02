@@ -189,6 +189,25 @@ def test_api_envelope_on_success(make_agent):
     assert body["meta"]["request_id"]
 
 
+def test_api_shows_consultations_and_checked_values_without_verification_data(make_agent):
+    agent, _ = make_agent(
+        [tool_turn("get_my_orders", order_id=8, email="anacarol.ferreira@coldmail.com"), "Total de R$ 349,90, com 5% de algo? Não."]
+    )
+    agent_reply = TestClient(create_app(agent)).post("/api/v1/chat", json={"message": "Meu pedido, 5%"}).json()
+    meta = agent_reply["meta"]
+    assert meta["consultations"] == [
+        {"tool": "get_my_orders", "arguments": {"order_id": 8, "email": "[redacted]"}, "status": "ok"}
+    ]
+    assert meta["checked_values"] == 2
+    assert "coldmail" not in str(meta)
+
+
+def test_degraded_reply_claims_no_checked_values(make_agent):
+    agent, _ = make_agent([LLMUnavailable("connection")])
+    body = TestClient(create_app(agent)).post("/api/v1/chat", json={"message": "Oi"}).json()
+    assert body["meta"]["checked_values"] == 0
+
+
 def test_api_keeps_the_conversation_by_session_id(make_agent, storage):
     agent, _ = make_agent(["Um", "Dois"])
     client = TestClient(create_app(agent))
@@ -214,7 +233,9 @@ def test_api_reports_degraded_service(make_agent):
 def test_api_serves_health_and_chat_page(make_agent):
     agent, _ = make_agent([])
     client = TestClient(create_app(agent))
-    assert client.get("/api/v1/health").json()["data"] == {"status": "ok"}
+    health = client.get("/api/v1/health").json()["data"]
+    assert health["status"] == "ok" and health["fixed_clock"] is True
+    assert "terça-feira, 10/02/2026" in health["store_clock"] and "aberta" in health["store_clock"]
     assert "Empório da Música" in client.get("/").text
 
 

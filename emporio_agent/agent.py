@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .clock import StoreClock
 from .config import Settings
-from .guard import Evidence, find_untraceable
+from .guard import Evidence, count_checked_values, find_untraceable
 from .llm import LLMClient, LLMUnavailable, ToolResult, build_llm
 from .policies import PolicyBook
 from .storage import SessionState, Storage
@@ -44,6 +44,7 @@ class AgentReply:
     latency_ms: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    checked_values: int = 0
 
 
 def _wrap_customer_message(text: str, context_line: str) -> str:
@@ -84,6 +85,9 @@ class ServiceAgent:
             storage=Storage(settings.db_path),
             llm=build_llm(settings),
         )
+
+    def store_status(self) -> dict:
+        return {"store_clock": self._clock.context_line(), "fixed_clock": self._clock.is_fixed}
 
     def reply(self, session_id: str, customer_text: str) -> AgentReply:
         started = time.perf_counter()
@@ -132,6 +136,7 @@ class ServiceAgent:
             latency_ms=latency_ms,
             input_tokens=usage["input"],
             output_tokens=usage["output"],
+            checked_values=0 if degraded else count_checked_values(text),
         )
 
     def _run_turn(

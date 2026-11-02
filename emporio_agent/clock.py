@@ -29,6 +29,10 @@ class StoreClock:
     def __init__(self, fixed_now: datetime | None = None) -> None:
         self._fixed_now = fixed_now
 
+    @property
+    def is_fixed(self) -> bool:
+        return self._fixed_now is not None
+
     def now(self) -> datetime:
         if self._fixed_now is None:
             return datetime.now(STORE_TZ)

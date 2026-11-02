@@ -120,7 +120,7 @@ def create_app(agent: ServiceAgent | None = None, limiter: RateLimiter | None = 
 
     @app.get("/api/v1/health")
     def health() -> JSONResponse:
-        return _envelope(data={"status": "ok"})
+        return _envelope(data={"status": "ok", **agent.store_status()})
 
     @app.post("/api/v1/chat")
     def chat(body: ChatRequest, request: Request) -> JSONResponse:
@@ -133,6 +133,9 @@ def create_app(agent: ServiceAgent | None = None, limiter: RateLimiter | None = 
             data={"session_id": session_id, "reply": reply.text},
             meta={
                 "tools": [t["tool"] for t in reply.tools_used],
+                # Verification factors are already redacted, so this is safe to show on the demo page.
+                "consultations": reply.tools_used,
+                "checked_values": reply.checked_values,
                 "latency_ms": reply.latency_ms,
                 "degraded": reply.degraded,
             },

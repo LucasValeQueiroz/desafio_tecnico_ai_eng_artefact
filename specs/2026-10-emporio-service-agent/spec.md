@@ -114,6 +114,7 @@ Doing nothing keeps the team overloaded. Doing this carelessly would put a confi
 - **RNF-05 (Reliability)** — A failed consultation or service call never crashes the conversation and never loses earlier history.
 - **RNF-06 (Testability)** — All business rules can be tested without credentials or network. The current date and time can be fixed so results are reproducible.
 - **RNF-07 (Simplicity)** — An evaluator can go from a fresh clone to a running conversation in under five minutes. Components are added only when they earn their place.
+- **RNF-09 (Demonstrability)** — On the demo page, an evaluator can see for each reply what was consulted and how many values were checked, with no verification factors shown, and can try the main scenarios without reading any documentation.
 - **RNF-08 (Cost protection)** — When the system is publicly reachable, excess messages are refused before they consume the language service, with limits both in the application and outside it.
 
 ---
@@ -300,4 +301,5 @@ No blocking question remains. The challenge explicitly asks for reasonable, docu
 |------|--------|--------|
 | 2026-10-31 | Lucas Vale Queiroz | Initial draft from the challenge brief, the manual and data profiling |
 | 2026-10-31 | Lucas Vale Queiroz | Added RNF-08 and A9 for a public demo |
+| 2026-11-01 | Lucas Vale Queiroz | Added RNF-09 so the demo shows how each reply was produced |
 | 2026-10-31 | Lucas Vale Queiroz | Added RF-26 and AC-25 after reading live conversations, in which the model embellished products with its own knowledge |

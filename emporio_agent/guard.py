@@ -56,6 +56,11 @@ class Evidence:
         return cls(set(data.get("amounts", [])), set(data.get("percents", [])))
 
 
+def count_checked_values(reply: str) -> int:
+    """How many amounts and percentages the safety net checked in a reply."""
+    return len(MONEY.findall(reply)) + len(PERCENT.findall(reply))
+
+
 def find_untraceable(reply: str, evidence: Evidence) -> list[str]:
     """Return the amounts and percentages in a reply that no evidence supports."""
     problems = []
