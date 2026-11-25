@@ -18,6 +18,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .access import AccessError, AccessStore, FirebaseRTDBAccessStore, InMemoryAccessStore
 from .agent import MAX_MESSAGE_CHARS, ServiceAgent
 from .config import ConfigError, load_settings
+from .notify import EmailNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,7 @@ def create_app(
     access_store: AccessStore | None = None,
     admin_token: str | None = None,
     approved_emails: set[str] | None = None,
+    notifier: EmailNotifier | None = None,
 ) -> FastAPI:
     if agent is None:
         try:
@@ -147,6 +149,18 @@ def create_app(
                 access_store = InMemoryAccessStore()
         admin_token = admin_token if admin_token is not None else settings.admin_token
         approved_emails = approved_emails if approved_emails is not None else set(settings.approved_emails)
+        if notifier is None and settings.notify_email:
+            candidate = EmailNotifier(
+                notify_email=settings.notify_email,
+                resend_api_key=settings.resend_api_key,
+                resend_from=settings.resend_from,
+                smtp_host=settings.smtp_host,
+                smtp_port=settings.smtp_port,
+                smtp_user=settings.smtp_user,
+                smtp_password=settings.smtp_password,
+            )
+            if candidate.configured:
+                notifier = candidate
 
     limiter = limiter or RateLimiter()
     approved_set = {email.strip().lower() for email in (approved_emails or set()) if email.strip()}
@@ -218,6 +232,9 @@ def create_app(
         except RuntimeError as error:
             logger.error("Access store error on request: %s", error)
             return _envelope(error={"code": "ACCESS_STORE_ERROR", "message": "Erro ao registrar solicitação. Tente novamente."}, status=503)
+        if notifier is not None and record.status == "pending" and expose_token:
+            admin_url = str(request.base_url).rstrip("/") + "/admin"
+            notifier.notify_new_request(record.name, record.email, record.note, admin_url=admin_url)
         payload = {"status": record.status, "name": record.name, "email": record.email}
         if expose_token:
             payload["token"] = record.token
