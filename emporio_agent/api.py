@@ -188,7 +188,7 @@ def create_app(
 
     @app.get("/api/v1/health")
     def health() -> JSONResponse:
-        return _envelope(data={"status": "ok", "access_gate": access_store is not None, **agent.store_status()})
+        return _envelope(data={"status": "ok", "access_gate": access_store is not None, "email_notifier": notifier is not None, **agent.store_status()})
 
     @app.get("/api/v1/access/status")
     def access_status(request: Request) -> JSONResponse:
