@@ -42,11 +42,21 @@
   }
   .chip { flex: none; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: .8125rem; cursor: pointer; }
   .chip:hover { border-color: var(--accent); }
-  form { display: flex; gap: 8px; padding: 6px 0 14px; }
-  input[type="text"] { flex: 1; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; }
-  button[type="submit"] { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
+  #form { display: flex; gap: 8px; padding: 6px 0 14px; }
+  input[type="text"], input[type="email"] { flex: 1; min-width: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; }
+  button { padding: 10px 16px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500; }
   button:disabled { opacity: .5; cursor: default; }
   input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .hidden { display: none !important; }
+  #gate { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 0; }
+  .gate-card { width: 100%; max-width: 440px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .gate-card h2 { margin: 0; font-size: 1.05rem; }
+  .gate-card p { margin: 0; color: var(--muted); font-size: .9rem; }
+  .gate-form { display: flex; flex-direction: column; gap: 10px; }
+  .gate-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .gate-feedback { font-size: .85rem; color: var(--accent); min-height: 1.2em; }
+  .status-pill { display: inline-block; align-self: flex-start; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 600; background: var(--customer); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -59,6 +69,32 @@
     </div>
     <label class="toggle"><input id="show-trace" type="checkbox" checked> Bastidores</label>
   </header>
+
+  <section id="gate" class="hidden" aria-label="Solicitação de acesso">
+    <div class="gate-card">
+      <div id="gate-request-view">
+        <h2>Acesso restrito para avaliação</h2>
+        <p>Para proteger a chave da API durante o processo seletivo, solicite liberação de acesso abaixo.</p>
+        <form id="gate-form" class="gate-form">
+          <input id="gate-name" type="text" placeholder="Seu nome" required maxlength="120" autocomplete="name">
+          <input id="gate-email" type="email" placeholder="Seu e-mail corporativo ou pessoal" required maxlength="254" autocomplete="email">
+          <input id="gate-note" type="text" placeholder="Empresa ou observação (opcional)" maxlength="300">
+          <button id="gate-submit" type="submit">Solicitar acesso</button>
+        </form>
+      </div>
+      <div id="gate-pending-view" class="hidden">
+        <span id="gate-status-pill" class="status-pill">Aguardando aprovação</span>
+        <h2 id="gate-pending-title">Solicitação enviada</h2>
+        <p id="gate-pending-desc">Assim que o candidato aprovar sua entrada, clique em verificar para liberar o chat.</p>
+        <div class="gate-actions">
+          <button id="gate-refresh" type="button">Verificar aprovação</button>
+          <button id="gate-reset" type="button" class="secondary">Usar outro e-mail</button>
+        </div>
+      </div>
+      <div id="gate-feedback" class="gate-feedback" aria-live="polite"></div>
+    </div>
+  </section>
+
   <div id="log" role="log" aria-live="polite"></div>
   <div id="scenarios" aria-label="Cenários para testar"></div>
   <form id="form">
@@ -67,13 +103,147 @@
   </form>
 </main>
 <script>
+  const TOKEN_KEY = "emporio-access-token";
   const log = document.getElementById("log");
   const form = document.getElementById("form");
   const input = document.getElementById("text");
   const send = document.getElementById("send");
   const app = document.getElementById("app");
   const showTrace = document.getElementById("show-trace");
+  const scenariosEl = document.getElementById("scenarios");
+
+  const gate = document.getElementById("gate");
+  const gateRequestView = document.getElementById("gate-request-view");
+  const gatePendingView = document.getElementById("gate-pending-view");
+  const gateForm = document.getElementById("gate-form");
+  const gateName = document.getElementById("gate-name");
+  const gateEmail = document.getElementById("gate-email");
+  const gateNote = document.getElementById("gate-note");
+  const gateSubmit = document.getElementById("gate-submit");
+  const gateRefresh = document.getElementById("gate-refresh");
+  const gateReset = document.getElementById("gate-reset");
+  const gateFeedback = document.getElementById("gate-feedback");
+  const gateStatusPill = document.getElementById("gate-status-pill");
+  const gatePendingTitle = document.getElementById("gate-pending-title");
+  const gatePendingDesc = document.getElementById("gate-pending-desc");
+
   let sessionId = null;
+  let chatInitialized = false;
+
+  function getStoredToken() {
+    try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
+  function setStoredToken(token) {
+    try {
+      if (token) localStorage.setItem(TOKEN_KEY, token);
+      else localStorage.removeItem(TOKEN_KEY);
+    } catch (e) { /* optional storage */ }
+  }
+
+  function showChatUI() {
+    gate.classList.add("hidden");
+    log.classList.remove("hidden");
+    scenariosEl.classList.remove("hidden");
+    form.classList.remove("hidden");
+    if (!chatInitialized) {
+      chatInitialized = true;
+      add("Oi! Sou a Lia. Escreva sua pergunta ou escolha um cenário abaixo. Em Bastidores, você vê de onde veio cada resposta.", "lia");
+    }
+    input.focus();
+  }
+
+  function showGateUI(status, info = {}) {
+    gate.classList.remove("hidden");
+    log.classList.add("hidden");
+    scenariosEl.classList.add("hidden");
+    form.classList.add("hidden");
+    gateFeedback.textContent = "";
+
+    if (status === "pending" || status === "denied") {
+      gateRequestView.classList.add("hidden");
+      gatePendingView.classList.remove("hidden");
+      if (status === "denied") {
+        gateStatusPill.textContent = "Acesso não aprovado";
+        gatePendingTitle.textContent = "Solicitação recusada";
+        gatePendingDesc.textContent = "Esta solicitação não foi aprovada pelo candidato.";
+      } else {
+        gateStatusPill.textContent = "Aguardando aprovação";
+        gatePendingTitle.textContent = info.email ? `Solicitação de ${info.email}` : "Solicitação enviada";
+        gatePendingDesc.textContent = "Assim que o candidato aprovar sua entrada, clique em verificar para liberar o chat.";
+      }
+    } else {
+      gateRequestView.classList.remove("hidden");
+      gatePendingView.classList.add("hidden");
+    }
+  }
+
+  async function checkAccess() {
+    try {
+      const headers = {};
+      const token = getStoredToken();
+      if (token) headers["X-Access-Token"] = token;
+      const res = await fetch("/api/v1/access/status", { headers });
+      const body = await res.json();
+      if (body.error) {
+        showGateUI("none");
+        gateFeedback.textContent = body.error.message;
+        return;
+      }
+      const data = body.data || {};
+      if (!data.gate_enabled || data.status === "approved") {
+        showChatUI();
+      } else {
+        showGateUI(data.status || "none", data);
+      }
+    } catch (e) {
+      showGateUI("none");
+      gateFeedback.textContent = "Não foi possível verificar o acesso agora.";
+    }
+  }
+
+  gateForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    gateFeedback.textContent = "";
+    gateSubmit.disabled = true;
+    try {
+      const res = await fetch("/api/v1/access/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: gateName.value.trim(),
+          email: gateEmail.value.trim(),
+          note: gateNote.value.trim(),
+        }),
+      });
+      const body = await res.json();
+      if (body.error) {
+        gateFeedback.textContent = body.error.message;
+        return;
+      }
+      const data = body.data || {};
+      if (data.token) setStoredToken(data.token);
+      if (data.status === "approved") {
+        showChatUI();
+      } else {
+        showGateUI(data.status || "pending", data);
+      }
+    } catch (e) {
+      gateFeedback.textContent = "Erro ao enviar solicitação. Tente novamente.";
+    } finally {
+      gateSubmit.disabled = false;
+    }
+  });
+
+  gateRefresh.addEventListener("click", async () => {
+    gateRefresh.disabled = true;
+    await checkAccess();
+    gateRefresh.disabled = false;
+  });
+
+  gateReset.addEventListener("click", () => {
+    setStoredToken("");
+    showGateUI("none");
+  });
 
   const SCENARIOS = [
     ["Violões até R$ 1000", "Quais opções de violões disponíveis custando até R$1000?"],
@@ -166,13 +336,21 @@
     send.disabled = true;
     const pending = add("Lia está digitando...", "lia pending");
     try {
+      const headers = { "Content-Type": "application/json" };
+      const token = getStoredToken();
+      if (token) headers["X-Access-Token"] = token;
       const response = await fetch("/api/v1/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ session_id: sessionId, message }),
       });
       const body = await response.json();
       pending.classList.remove("pending");
+      if (body.error && body.error.code === "ACCESS_REQUIRED") {
+        pending.remove();
+        await checkAccess();
+        return;
+      }
       if (body.error && body.error.code === "RATE_LIMITED") {
         pending.textContent = body.error.message;
         return;
@@ -198,14 +376,13 @@
     ask(message);
   });
 
-  const chips = document.getElementById("scenarios");
   for (const [label, message] of SCENARIOS) {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = label;
     chip.addEventListener("click", () => { if (!send.disabled) ask(message); });
-    chips.appendChild(chip);
+    scenariosEl.appendChild(chip);
   }
 
   function applyTrace() { app.classList.toggle("hide-trace", !showTrace.checked); }
@@ -221,8 +398,7 @@
     document.getElementById("clock").textContent = data.store_clock + (data.fixed_clock ? " Data fixa para a demonstração." : "");
   }).catch(() => {});
 
-  add("Oi! Sou a Lia. Escreva sua pergunta ou escolha um cenário abaixo. Em Bastidores, você vê de onde veio cada resposta.", "lia");
-  input.focus();
+  checkAccess();
 </script>
 </body>
 </html>

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administração de Acesso — Empório da Música</title>
+<style>
+  :root {
+    --bg: #f6f3ee; --surface: #ffffff; --text: #26211c; --muted: #6f665c;
+    --accent: #8a3b1e; --on-accent: #ffffff; --line: #e3dcd2;
+    --ok: #2f6b3c; --warn: #9a5b13; --bad: #9c2b2b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1815; --surface: #26221e; --text: #f1ece5; --muted: #a89e92;
+      --accent: #d9794f; --on-accent: #1b1815; --line: #3a342d;
+      --ok: #79c58a; --warn: #e6a95c; --bad: #e37a7a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 1.15rem; }
+  a { color: var(--accent); text-decoration: none; font-size: .9rem; }
+  .auth-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+  input[type="password"] { flex: 1; min-width: 220px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+  button { padding: 8px 14px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+  button.approve { background: var(--ok); color: #fff; }
+  button.deny { background: var(--bad); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .feedback { font-size: .9rem; color: var(--muted); }
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .name { font-weight: 700; }
+  .meta { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+  .badge { display: inline-block; font-size: .75rem; font-weight: 700; text-transform: uppercase; margin-left: 8px; }
+  .badge.pending { color: var(--warn); }
+  .badge.approved { color: var(--ok); }
+  .badge.denied { color: var(--bad); }
+  .actions { display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Liberação de Acesso — Empório da Música</h1>
+    <a href="/">Voltar ao chat</a>
+  </header>
+  <form id="auth-form" class="auth-bar">
+    <input id="admin-token" type="password" placeholder="ADMIN_TOKEN configurado no Vercel" required>
+    <button type="submit">Carregar solicitações</button>
+  </form>
+  <div id="feedback" class="feedback" aria-live="polite"></div>
+  <div id="list" class="list"></div>
+</main>
+<script>
+  const SESSION_KEY = "emporio-admin-token";
+  const authForm = document.getElementById("auth-form");
+  const tokenInput = document.getElementById("admin-token");
+  const feedback = document.getElementById("feedback");
+  const listEl = document.getElementById("list");
+
+  const LABELS = { pending: "Pendente", approved: "Aprovado", denied: "Negado" };
+
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (saved) tokenInput.value = saved;
+  } catch (e) {}
+
+  async function loadRequests() {
+    const token = tokenInput.value.trim();
+    if (!token) return;
+    try { sessionStorage.setItem(SESSION_KEY, token); } catch (e) {}
+    feedback.textContent = "Carregando...";
+    listEl.innerHTML = "";
+    try {
+      const res = await fetch("/api/v1/access/admin/requests", { headers: { "X-Admin-Token": token } });
+      const body = await res.json();
+      if (body.error) {
+        feedback.textContent = body.error.message;
+        return;
+      }
+      const items = (body.data && body.data.requests) || [];
+      feedback.textContent = items.length ? `${items.length} solicitação(ões).` : "Nenhuma solicitação registrada ainda.";
+      for (const item of items) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const info = document.createElement("div");
+        info.className = "info";
+        const title = document.createElement("div");
+        title.className = "name";
+        title.textContent = item.name;
+        const badge = document.createElement("span");
+        badge.className = `badge ${item.status}`;
+        badge.textContent = LABELS[item.status] || item.status;
+        title.appendChild(badge);
+
+        const emailLine = document.createElement("div");
+        emailLine.className = "meta";
+        emailLine.textContent = item.email + (item.note ? ` · ${item.note}` : "");
+
+        const timeLine = document.createElement("div");
+        timeLine.className = "meta";
+        timeLine.textContent = `Solicitado em: ${item.created_at}`;
+
+        info.append(title, emailLine, timeLine);
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        if (item.status !== "approved") {
+          const okBtn = document.createElement("button");
+          okBtn.type = "button";
+          okBtn.className = "approve";
+          okBtn.textContent = "Aprovar";
+          okBtn.onclick = () => decide(item.key, "approved");
+          actions.appendChild(okBtn);
+        }
+        if (item.status !== "denied") {
+          const noBtn = document.createElement("button");
+          noBtn.type = "button";
+          noBtn.className = "deny";
+          noBtn.textContent = "Negar";
+          noBtn.onclick = () => decide(item.key, "denied");
+          actions.appendChild(noBtn);
+        }
+
+        card.append(info, actions);
+        listEl.appendChild(card);
+      }
+    } catch (e) {
+      feedback.textContent = "Erro ao conectar com o servidor.";
+    }
+  }
+
+  async function decide(key, status) {
+    const token = tokenInput.value.trim();
+    feedback.textContent = "Atualizando...";
+    try {
+      const res = await fetch("/api/v1/access/admin/decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": token },
+        body: JSON.stringify({ key, status }),
+      });
+      const body = await res.json();
+      if (body.error) {
+        feedback.textContent = body.error.message;
+        return;
+      }
+      await loadRequests();
+    } catch (e) {
+      feedback.textContent = "Erro ao atualizar status.";
+    }
+  }
+
+  authForm.addEventListener("submit", (e) => { e.preventDefault(); loadRequests(); });
+  if (tokenInput.value.trim()) loadRequests();
+</script>
+</body>
+</html>
