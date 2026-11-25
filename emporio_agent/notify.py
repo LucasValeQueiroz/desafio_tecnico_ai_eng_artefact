@@ -82,13 +82,20 @@ class EmailNotifier:
             headers={
                 "Authorization": f"Bearer {self._resend_api_key}",
                 "Content-Type": "application/json",
+                "Accept": "application/json",
+                # Resend sits behind Cloudflare, which rejects Python-urllib's default User-Agent with 403.
+                "User-Agent": "emporio-musica-agent/1.0",
             },
             method="POST",
         )
         try:
             with self._opener(req, timeout=self._timeout) as resp:
                 return 200 <= getattr(resp, "status", 200) < 300
-        except (urllib.error.URLError, urllib.error.HTTPError) as exc:
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")[:300]
+            logger.warning("Failed to send Resend notification (HTTP %s): %s", exc.code, detail)
+            return False
+        except urllib.error.URLError as exc:
             logger.warning("Failed to send Resend notification: %s", exc)
             return False
 
