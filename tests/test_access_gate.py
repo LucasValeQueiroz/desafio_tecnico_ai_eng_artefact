@@ -1,18 +1,20 @@
-"""Tests for the evaluator access request and approval gate."""
+"""Tests for the evaluator access request, approval gate, and email notification."""
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
+import urllib.error
 
 from fastapi.testclient import TestClient
 
 from emporio_agent.access import FirebaseRTDBAccessStore, InMemoryAccessStore
 from emporio_agent.api import create_app
+from emporio_agent.notify import EmailNotifier
 
 
 class _FakeResponse:
-    def __init__(self, raw: bytes) -> None:
+    def __init__(self, raw: bytes, status: int = 200) -> None:
         self._raw = raw
+        self.status = status
 
     def read(self) -> bytes:
         return self._raw
@@ -149,3 +151,26 @@ def test_firebase_rtdb_store_roundtrip_with_mock_transport():
     updated = store.set_status(record.key, "approved")
     assert updated is not None and updated.status == "approved"
     assert store.list_requests()[0].status == "approved"
+
+
+def test_email_notifier_sends_via_resend_and_never_raises_on_error():
+    sent: list[dict] = []
+
+    def fake_urlopen(req, timeout=6.0):
+        assert req.get_header("Authorization") == "Bearer re_test_key"
+        sent.append(json.loads(req.data.decode("utf-8")))
+        return _FakeResponse(b'{"id":"email_123"}', status=200)
+
+    notifier = EmailNotifier(notify_email="lucas@example.com", resend_api_key="re_test_key", opener=fake_urlopen)
+    assert notifier.configured is True
+    assert notifier.notify_new_request("Marina", "marina@artefact.com", "Tech Recruiter", "https://site.vercel.app/admin")
+    assert len(sent) == 1
+    assert sent[0]["to"] == ["lucas@example.com"]
+    assert "Marina" in sent[0]["subject"]
+    assert "https://site.vercel.app/admin" in sent[0]["text"]
+
+    def failing_urlopen(req, timeout=6.0):
+        raise urllib.error.URLError("network down")
+
+    failing = EmailNotifier(notify_email="lucas@example.com", resend_api_key="re_test_key", opener=failing_urlopen)
+    assert failing.notify_new_request("Marina", "marina@artefact.com") is False

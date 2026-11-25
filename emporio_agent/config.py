@@ -39,6 +39,13 @@ class Settings:
     firebase_db_secret: str | None = None
     admin_token: str | None = None
     approved_emails: tuple[str, ...] = ()
+    notify_email: str | None = None
+    resend_api_key: str | None = None
+    resend_from: str = "Empório da Música <onboarding@resend.dev>"
+    smtp_host: str | None = None
+    smtp_port: int = 465
+    smtp_user: str | None = None
+    smtp_password: str | None = None
 
 
 def _default_db_path() -> Path:
@@ -95,4 +102,11 @@ def load_settings() -> Settings:
         firebase_db_secret=firebase_db_secret,
         admin_token=admin_token,
         approved_emails=approved_emails,
+        notify_email=os.getenv("NOTIFY_EMAIL", "").strip() or None,
+        resend_api_key=os.getenv("RESEND_API_KEY", "").strip() or None,
+        resend_from=os.getenv("RESEND_FROM", "Empório da Música <onboarding@resend.dev>").strip(),
+        smtp_host=os.getenv("SMTP_HOST", "").strip() or None,
+        smtp_port=int(os.getenv("SMTP_PORT", "465")),
+        smtp_user=os.getenv("SMTP_USER", "").strip() or None,
+        smtp_password=os.getenv("SMTP_PASSWORD", "").strip() or None,
     )
